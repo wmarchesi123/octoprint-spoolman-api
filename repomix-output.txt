@@ -1,0 +1,371 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+octoprint_spoolman_api/
+  static/
+    css/
+      spoolman_api.css
+    js/
+      spoolman_api.js
+    less/
+      spoolman_api.less
+  templates/
+    README.txt
+  __init__.py
+MANIFEST.in
+README.md
+repomix.config.json
+requirements.txt
+setup.cfg
+setup.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="octoprint_spoolman_api/static/css/spoolman_api.css">
+/* TODO: Have your plugin's CSS files generated to here. */
+</file>
+
+<file path="octoprint_spoolman_api/static/js/spoolman_api.js">
+/*
+ * View model for OctoPrint-Spoolman-API
+ *
+ * Author: William Marchesi
+ * License: AGPLv3
+ */
+$(function() {
+    function Spoolman_apiViewModel(parameters) {
+        var self = this;
+
+        // assign the injected parameters, e.g.:
+        // self.loginStateViewModel = parameters[0];
+        // self.settingsViewModel = parameters[1];
+
+        // TODO: Implement your plugin's view model here.
+    }
+
+    /* view model class, parameters for constructor, container to bind to
+     * Please see http://docs.octoprint.org/en/master/plugins/viewmodels.html#registering-custom-viewmodels for more details
+     * and a full list of the available options.
+     */
+    OCTOPRINT_VIEWMODELS.push({
+        construct: Spoolman_apiViewModel,
+        // ViewModels your plugin depends on, e.g. loginStateViewModel, settingsViewModel, ...
+        dependencies: [ /* "loginStateViewModel", "settingsViewModel" */ ],
+        // Elements to bind to, e.g. #settings_plugin_spoolman_api, #tab_plugin_spoolman_api, ...
+        elements: [ /* ... */ ]
+    });
+});
+</file>
+
+<file path="octoprint_spoolman_api/static/less/spoolman_api.less">
+// TODO: Put your plugin's LESS here, have it generated to ../css.
+</file>
+
+<file path="octoprint_spoolman_api/templates/README.txt">
+Put your plugin's Jinja2 templates here.
+</file>
+
+<file path="octoprint_spoolman_api/__init__.py">
+# coding=utf-8
+from __future__ import absolute_import
+
+### (Don't forget to remove me)
+# This is a basic skeleton for your plugin's __init__.py. You probably want to adjust the class name of your plugin
+# as well as the plugin mixins it's subclassing from. This is really just a basic skeleton to get you started,
+# defining your plugin as a template plugin, settings and asset plugin. Feel free to add or remove mixins
+# as necessary.
+#
+# Take a look at the documentation on what other plugin mixins are available.
+
+import octoprint.plugin
+
+class Spoolman_apiPlugin(octoprint.plugin.SettingsPlugin,
+    octoprint.plugin.AssetPlugin,
+    octoprint.plugin.TemplatePlugin
+):
+
+    ##~~ SettingsPlugin mixin
+
+    def get_settings_defaults(self):
+        return {
+            # put your plugin's default settings here
+        }
+
+    ##~~ AssetPlugin mixin
+
+    def get_assets(self):
+        # Define your plugin's asset files to automatically include in the
+        # core UI here.
+        return {
+            "js": ["js/spoolman_api.js"],
+            "css": ["css/spoolman_api.css"],
+            "less": ["less/spoolman_api.less"]
+        }
+
+    ##~~ Softwareupdate hook
+
+    def get_update_information(self):
+        # Define the configuration for your plugin to use with the Software Update
+        # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
+        # for details.
+        return {
+            "spoolman_api": {
+                "displayName": "Spoolman_api Plugin",
+                "displayVersion": self._plugin_version,
+
+                # version check: github repository
+                "type": "github_release",
+                "user": "wmarchesi123",
+                "repo": "octoprint-spoolman-api",
+                "current": self._plugin_version,
+
+                # update method: pip
+                "pip": "https://github.com/wmarchesi123/octoprint-spoolman-api/archive/{target_version}.zip",
+            }
+        }
+
+
+# If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
+# ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
+# can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
+__plugin_name__ = "Spoolman_api Plugin"
+
+
+# Set the Python version your plugin is compatible with below. Recommended is Python 3 only for all new plugins.
+# OctoPrint 1.4.0 - 1.7.x run under both Python 3 and the end-of-life Python 2.
+# OctoPrint 1.8.0 onwards only supports Python 3.
+__plugin_pythoncompat__ = ">=3,<4"  # Only Python 3
+
+def __plugin_load__():
+    global __plugin_implementation__
+    __plugin_implementation__ = Spoolman_apiPlugin()
+
+    global __plugin_hooks__
+    __plugin_hooks__ = {
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
+    }
+</file>
+
+<file path="MANIFEST.in">
+include README.md
+recursive-include octoprint_spoolman_api/templates *
+recursive-include octoprint_spoolman_api/translations *
+recursive-include octoprint_spoolman_api/static *
+</file>
+
+<file path="README.md">
+# OctoPrint-Spoolman-API
+
+**TODO:** Describe what your plugin does.
+
+## Setup
+
+Install via the bundled [Plugin Manager](https://docs.octoprint.org/en/master/bundledplugins/pluginmanager.html)
+or manually using this URL:
+
+    https://github.com/wmarchesi123/octoprint-spoolman-api/archive/master.zip
+
+**TODO:** Describe how to install your plugin, if more needs to be done than just installing it via pip or through
+the plugin manager.
+
+## Configuration
+
+**TODO:** Describe your plugin's configuration options (if any).
+</file>
+
+<file path="repomix.config.json">
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 52428800
+  },
+  "output": {
+    "filePath": "repomix-output.txt",
+    "style": "xml",
+    "parsableStyle": false,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "copyToClipboard": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100,
+      "includeDiffs": false
+    }
+  },
+  "include": [],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": []
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}
+</file>
+
+<file path="requirements.txt">
+.
+</file>
+
+<file path="setup.cfg">
+[bdist_wheel]
+universal = 1
+</file>
+
+<file path="setup.py">
+# coding=utf-8
+
+########################################################################################################################
+### Do not forget to adjust the following variables to your own plugin.
+
+# The plugin's identifier, has to be unique
+plugin_identifier = "spoolman_api"
+
+# The plugin's python package, should be "octoprint_<plugin identifier>", has to be unique
+plugin_package = "octoprint_spoolman_api"
+
+# The plugin's human readable name. Can be overwritten within OctoPrint's internal data via __plugin_name__ in the
+# plugin module
+plugin_name = "OctoPrint-Spoolman-API"
+
+# The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
+plugin_version = "0.1.0"
+
+# The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
+# module
+plugin_description = """REST API for OctoPrint-Spoolman spool selection"""
+
+# The plugin's author. Can be overwritten within OctoPrint's internal data via __plugin_author__ in the plugin module
+plugin_author = "William Marchesi"
+
+# The plugin's author's mail address.
+plugin_author_email = "will@marchesi.io"
+
+# The plugin's homepage URL. Can be overwritten within OctoPrint's internal data via __plugin_url__ in the plugin module
+plugin_url = "https://github.com/wmarchesi123/octoprint-spoolman-api"
+
+# The plugin's license. Can be overwritten within OctoPrint's internal data via __plugin_license__ in the plugin module
+plugin_license = "AGPLv3"
+
+# Any additional requirements besides OctoPrint should be listed here
+plugin_requires = []
+
+### --------------------------------------------------------------------------------------------------------------------
+### More advanced options that you usually shouldn't have to touch follow after this point
+### --------------------------------------------------------------------------------------------------------------------
+
+# Additional package data to install for this plugin. The subfolders "templates", "static" and "translations" will
+# already be installed automatically if they exist. Note that if you add something here you'll also need to update
+# MANIFEST.in to match to ensure that python setup.py sdist produces a source distribution that contains all your
+# files. This is sadly due to how python's setup.py works, see also http://stackoverflow.com/a/14159430/2028598
+plugin_additional_data = []
+
+# Any additional python packages you need to install with your plugin that are not contained in <plugin_package>.*
+plugin_additional_packages = []
+
+# Any python packages within <plugin_package>.* you do NOT want to install with your plugin
+plugin_ignored_packages = []
+
+# Additional parameters for the call to setuptools.setup. If your plugin wants to register additional entry points,
+# define dependency links or other things like that, this is the place to go. Will be merged recursively with the
+# default setup parameters as provided by octoprint_setuptools.create_plugin_setup_parameters using
+# octoprint.util.dict_merge.
+#
+# Example:
+#     plugin_requires = ["someDependency==dev"]
+#     additional_setup_parameters = {"dependency_links": ["https://github.com/someUser/someRepo/archive/master.zip#egg=someDependency-dev"]}
+# "python_requires": ">=3,<4" blocks installation on Python 2 systems, to prevent confused users and provide a helpful error. 
+# Remove it if you would like to support Python 2 as well as 3 (not recommended).
+additional_setup_parameters = {"python_requires": ">=3,<4"}
+
+########################################################################################################################
+
+from setuptools import setup
+
+try:
+    import octoprint_setuptools
+except:
+    print(
+        "Could not import OctoPrint's setuptools, are you sure you are running that under "
+        "the same python installation that OctoPrint is installed under?"
+    )
+    import sys
+
+    sys.exit(-1)
+
+setup_parameters = octoprint_setuptools.create_plugin_setup_parameters(
+    identifier=plugin_identifier,
+    package=plugin_package,
+    name=plugin_name,
+    version=plugin_version,
+    description=plugin_description,
+    author=plugin_author,
+    mail=plugin_author_email,
+    url=plugin_url,
+    license=plugin_license,
+    requires=plugin_requires,
+    additional_packages=plugin_additional_packages,
+    ignored_packages=plugin_ignored_packages,
+    additional_data=plugin_additional_data,
+)
+
+if len(additional_setup_parameters):
+    from octoprint.util import dict_merge
+
+    setup_parameters = dict_merge(setup_parameters, additional_setup_parameters)
+
+setup(**setup_parameters)
+</file>
+
+</files>
