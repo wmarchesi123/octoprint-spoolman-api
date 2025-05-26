@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import absolute_import
 
 import octoprint.plugin
@@ -18,59 +19,37 @@ class SpoolmanAPIPlugin(
         # Get the plugin info
         plugin_info = self._plugin_manager.get_plugin_info(plugin_id)
 
-        if plugin_info:
-            self._logger.info(f"Found Spoolman plugin info!")
+        if plugin_info and plugin_info.implementation:
+            self._spoolman_impl = plugin_info.implementation
+            self._logger.info("Got Spoolman implementation successfully")
 
-            # Get the actual implementation
-            if plugin_info.implementation:
-                self._spoolman_impl = plugin_info.implementation
-                self._logger.info(f"Got Spoolman implementation")
-
-                # List available methods
-                methods = [m for m in dir(self._spoolman_impl) if not m.startswith("_")]
-                self._logger.info(f"Available public Spoolman methods: {methods}")
+            # Try to find the settings key constant
+            # The plugin likely has a SettingsKeys class or similar
+            if hasattr(self._spoolman_impl, "SettingsKeys"):
+                self._settings_keys = self._spoolman_impl.SettingsKeys
+                self._logger.info("Found SettingsKeys")
             else:
-                self._logger.error("Spoolman plugin has no implementation")
-                self._spoolman_impl = None
-        else:
-            self._logger.error("Spoolman plugin not found!")
-            self._spoolman_impl = None
+                # Try to find it in the module
+                import inspect
 
-        # Also try to get helpers
-        helpers = self._plugin_manager.get_helpers(plugin_id)
-        if helpers:
-            self._logger.info(f"Found Spoolman helpers: {list(helpers.keys())}")
-            self._spoolman_helpers = helpers
+                module = inspect.getmodule(self._spoolman_impl)
+                if hasattr(module, "SettingsKeys"):
+                    self._settings_keys = module.SettingsKeys
+                    self._logger.info("Found SettingsKeys in module")
+                else:
+                    self._settings_keys = None
+                    self._logger.warning("Could not find SettingsKeys")
         else:
-            self._logger.info("No Spoolman helpers found")
-            self._spoolman_helpers = None
+            self._logger.error("Spoolman plugin not found or has no implementation!")
+            self._spoolman_impl = None
 
     def get_api_commands(self):
         return dict(
-            set_spool=["spool_id", "tool"],
-            get_current_spool=["tool"],
-            list_tools=[],
-            debug_info=[],
+            set_spool=["spool_id", "tool"], get_current_spool=["tool"], list_tools=[]
         )
 
     def on_api_command(self, command, data):
-        if command == "debug_info":
-            info = {
-                "spoolman_found": self._spoolman_impl is not None,
-                "helpers_found": self._spoolman_helpers is not None,
-            }
-
-            if self._spoolman_impl:
-                info["methods"] = [
-                    m for m in dir(self._spoolman_impl) if not m.startswith("_")
-                ]
-
-            if self._spoolman_helpers:
-                info["helpers"] = list(self._spoolman_helpers.keys())
-
-            return jsonify(dict(success=True, debug=info))
-
-        elif command == "set_spool":
+        if command == "set_spool":
             spool_id = data.get("spool_id")
             tool = data.get("tool", 0)
 
@@ -79,157 +58,140 @@ class SpoolmanAPIPlugin(
                     jsonify(dict(success=False, error="spool_id is required")), 400
                 )
 
-            # First try helpers if available
-            if self._spoolman_helpers:
-                # Common helper method names
-                for method_name in ["select_spool", "set_spool", "set_active_spool"]:
-                    if method_name in self._spoolman_helpers:
-                        try:
-                            self._logger.info(
-                                f"Calling helper {method_name}({tool}, {spool_id})"
-                            )
-                            result = self._spoolman_helpers[method_name](tool, spool_id)
+            if not self._spoolman_impl:
+                return make_response(
+                    jsonify(dict(success=False, error="Spoolman plugin not available")),
+                    503,
+                )
 
-                            return jsonify(
-                                dict(
-                                    success=True,
-                                    spool_id=spool_id,
-                                    tool=tool,
-                                    method=f"helper.{method_name}",
-                                    message=f"Spool {spool_id} set for tool {tool}",
-                                )
-                            )
-                        except Exception as e:
-                            self._logger.error(f"Helper {method_name} failed: {e}")
+            try:
+                # Convert spool_id to string as the plugin expects
+                spool_id_str = str(spool_id) if spool_id is not None else None
+                tool_id = int(tool)
 
-            # Try the implementation directly
-            if self._spoolman_impl:
-                # Check if it has on_api_command (for handling API calls)
-                if hasattr(self._spoolman_impl, "on_api_command"):
-                    try:
-                        # Try different command formats that Spoolman might use
-                        commands_to_try = [
-                            ("select_spool", {"tool": tool, "spool_id": spool_id}),
-                            ("selectSpool", {"tool": tool, "spool": {"id": spool_id}}),
-                            ("set_spool", {"tool": tool, "spool_id": spool_id}),
-                        ]
+                # Get the current spools settings
+                # Try to use the SettingsKeys if we found it
+                if self._settings_keys and hasattr(
+                    self._settings_keys, "SELECTED_SPOOL_IDS"
+                ):
+                    settings_key = self._settings_keys.SELECTED_SPOOL_IDS
+                else:
+                    # Fallback to common key names
+                    settings_key = "selectedSpoolIds"
 
-                        for cmd, payload in commands_to_try:
-                            self._logger.info(
-                                f"Trying API command: {cmd} with {payload}"
-                            )
-                            result = self._spoolman_impl.on_api_command(cmd, payload)
+                # Get current spools from Spoolman plugin settings
+                spools = self._spoolman_impl._settings.get([settings_key])
+                if spools is None:
+                    spools = {}
 
-                            if result:  # Assuming non-None/non-False means success
-                                return jsonify(
-                                    dict(
-                                        success=True,
-                                        spool_id=spool_id,
-                                        tool=tool,
-                                        method=f"api_command.{cmd}",
-                                        message=f"Spool {spool_id} set for tool {tool}",
-                                    )
-                                )
-                    except Exception as e:
-                        self._logger.error(f"API command failed: {e}")
+                # Update the spool selection
+                spools[str(tool_id)] = {
+                    "spoolId": spool_id_str,
+                }
 
-                # Try direct method calls
-                method_names = ["select_spool", "selectSpool", "set_spool", "setSpool"]
-                for method_name in method_names:
-                    if hasattr(self._spoolman_impl, method_name):
-                        try:
-                            self._logger.info(
-                                f"Calling method {method_name}({tool}, {spool_id})"
-                            )
-                            method = getattr(self._spoolman_impl, method_name)
-                            result = method(tool, spool_id)
+                # Save to Spoolman plugin settings
+                self._spoolman_impl._settings.set([settings_key], spools)
+                self._spoolman_impl._settings.save()
 
-                            return jsonify(
-                                dict(
-                                    success=True,
-                                    spool_id=spool_id,
-                                    tool=tool,
-                                    method=f"direct.{method_name}",
-                                    message=f"Spool {spool_id} set for tool {tool}",
-                                )
-                            )
-                        except Exception as e:
-                            self._logger.error(f"Method {method_name} failed: {e}")
+                # Trigger the plugin event
+                # Try to use the Events enum if available
+                event_name = None
+                if hasattr(self._spoolman_impl, "Events"):
+                    events = self._spoolman_impl.Events
+                    if hasattr(events, "PLUGIN_SPOOLMAN_SPOOL_SELECTED"):
+                        event_name = events.PLUGIN_SPOOLMAN_SPOOL_SELECTED
 
-            # Last resort - try updating settings
-            if self._spoolman_impl and hasattr(self._spoolman_impl, "_settings"):
-                try:
-                    self._logger.info("Trying to update via settings")
-                    self._spoolman_impl._settings.set([f"tool{tool}_spool"], spool_id)
-                    self._spoolman_impl._settings.save()
+                if not event_name:
+                    # Try module level
+                    import inspect
 
-                    return jsonify(
-                        dict(
-                            success=True,
-                            spool_id=spool_id,
-                            tool=tool,
-                            method="settings",
-                            message=f"Spool {spool_id} set for tool {tool} via settings",
-                        )
+                    module = inspect.getmodule(self._spoolman_impl)
+                    if hasattr(module, "Events"):
+                        events = module.Events
+                        if hasattr(events, "PLUGIN_SPOOLMAN_SPOOL_SELECTED"):
+                            event_name = events.PLUGIN_SPOOLMAN_SPOOL_SELECTED
+
+                if not event_name:
+                    # Fallback to string
+                    event_name = "plugin_spoolman_spool_selected"
+
+                # Trigger the event using the Spoolman plugin's method
+                if hasattr(self._spoolman_impl, "triggerPluginEvent"):
+                    self._spoolman_impl.triggerPluginEvent(
+                        event_name,
+                        {
+                            "toolIdx": tool_id,
+                            "spoolId": spool_id_str,
+                        },
                     )
-                except Exception as e:
-                    self._logger.error(f"Settings update failed: {e}")
+                else:
+                    # Use the event bus directly
+                    self._event_bus.fire(
+                        event_name,
+                        {
+                            "toolIdx": tool_id,
+                            "spoolId": spool_id_str,
+                        },
+                    )
 
-            return make_response(
-                jsonify(
+                self._logger.info(
+                    f"Successfully set spool {spool_id_str} for tool {tool_id}"
+                )
+
+                return jsonify(
                     dict(
-                        success=False,
-                        error="Could not find a way to set spool selection",
+                        success=True,
+                        spool_id=spool_id_str,
+                        tool=tool_id,
+                        message=f"Spool {spool_id_str} set for tool {tool_id}",
                     )
-                ),
-                503,
-            )
+                )
+
+            except Exception as e:
+                self._logger.error(f"Error setting spool: {str(e)}", exc_info=True)
+                return make_response(
+                    jsonify(
+                        dict(success=False, error=f"Failed to set spool: {str(e)}")
+                    ),
+                    500,
+                )
 
         elif command == "get_current_spool":
             tool = data.get("tool", 0)
-            spool_id = None
+            tool_id = str(int(tool))
 
-            # Try helpers first
-            if self._spoolman_helpers:
-                for method_name in [
-                    "get_selected_spool",
-                    "get_spool",
-                    "getSelectedSpool",
-                ]:
-                    if method_name in self._spoolman_helpers:
-                        try:
-                            spool_id = self._spoolman_helpers[method_name](tool)
-                            break
-                        except Exception as e:
-                            self._logger.error(f"Helper {method_name} failed: {e}")
+            if not self._spoolman_impl:
+                return jsonify(dict(success=True, tool=tool, spool_id=None))
 
-            # Try implementation methods
-            if spool_id is None and self._spoolman_impl:
-                for method_name in [
-                    "get_selected_spool",
-                    "getSelectedSpool",
-                    "get_spool",
-                ]:
-                    if hasattr(self._spoolman_impl, method_name):
-                        try:
-                            method = getattr(self._spoolman_impl, method_name)
-                            spool_id = method(tool)
-                            break
-                        except Exception as e:
-                            self._logger.error(f"Method {method_name} failed: {e}")
+            try:
+                # Get the settings key
+                if self._settings_keys and hasattr(
+                    self._settings_keys, "SELECTED_SPOOL_IDS"
+                ):
+                    settings_key = self._settings_keys.SELECTED_SPOOL_IDS
+                else:
+                    settings_key = "selectedSpoolIds"
 
-            # Try settings
-            if (
-                spool_id is None
-                and self._spoolman_impl
-                and hasattr(self._spoolman_impl, "_settings")
-            ):
-                try:
-                    spool_id = self._spoolman_impl._settings.get([f"tool{tool}_spool"])
-                except:
-                    pass
+                # Get current spools from settings
+                spools = self._spoolman_impl._settings.get([settings_key])
 
-            return jsonify(dict(success=True, tool=tool, spool_id=spool_id))
+                if spools and tool_id in spools:
+                    spool_data = spools[tool_id]
+                    spool_id = (
+                        spool_data.get("spoolId")
+                        if isinstance(spool_data, dict)
+                        else spool_data
+                    )
+
+                    return jsonify(
+                        dict(success=True, tool=int(tool), spool_id=spool_id)
+                    )
+
+                return jsonify(dict(success=True, tool=int(tool), spool_id=None))
+
+            except Exception as e:
+                self._logger.error(f"Error getting current spool: {str(e)}")
+                return jsonify(dict(success=True, tool=int(tool), spool_id=None))
 
         elif command == "list_tools":
             printer_profile = self._printer_profile_manager.get_current()
