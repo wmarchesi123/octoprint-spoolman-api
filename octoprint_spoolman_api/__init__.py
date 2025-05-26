@@ -19,7 +19,7 @@ class SpoolmanAPIPlugin(
 
         # List all available plugins for debugging
         all_plugins = self._plugin_manager.get_plugins()
-        self._logger.info(f"Available plugins: {[p for p in all_plugins]}")
+        self._logger.info(f"Available plugins: {list(all_plugins.keys())}")
 
         # Try different possible plugin identifiers
         possible_names = [
