@@ -28,7 +28,7 @@ class SpoolmanAPIPlugin(
 
                 # List available methods
                 methods = [m for m in dir(self._spoolman_impl) if not m.startswith("_")]
-                self._logger.info(f"Available public methods: {methods}")
+                self._logger.info(f"Available public Spoolman methods: {methods}")
             else:
                 self._logger.error("Spoolman plugin has no implementation")
                 self._spoolman_impl = None
